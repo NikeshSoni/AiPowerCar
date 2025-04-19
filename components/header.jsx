@@ -20,13 +20,13 @@ const Header = async ({ isAdminPage = false }) => {
   const isAdmin = user?.publicMetadata?.role === "admin" // or however you define admin
 
   return (
-    <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b">
+    <header className="fixed top-0 w-full bg-white/60 backdrop-blur-md z-50 border-b">
       <nav className="mx-auto px-4 py-4 flex items-center justify-between">
         <Link href={isAdminPage ? "/admin" : "/"} className="flex items-center">
           <Image
             alt="Vahiql Logo"
-            width={200}
-            height={60}
+            width={1500}
+            height={50}
             className="h-12 w-auto object-contain"
             src={logo}
           />
