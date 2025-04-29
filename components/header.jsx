@@ -10,14 +10,14 @@ import {
   SignInButton,
   UserButton
 } from '@clerk/nextjs'
-import { currentUser } from '@clerk/nextjs/server' // ✅ correct import
 import { Button } from './ui/button'
 import { ArrowLeft, CarFront, Heart } from 'lucide-react'
+import { checkUser } from '@/lib/checkUser'
 
 const Header = async ({ isAdminPage = false }) => {
-  const user = await currentUser()
+  const user = await checkUser()
 
-  const isAdmin = user?.publicMetadata?.role === "admin" // or however you define admin
+  const isAdmin = user?.role === "ADMIN" // or however you define admin
 
   return (
     <header className="fixed top-0 w-full bg-white/60 backdrop-blur-md z-50 border-b">
@@ -51,7 +51,6 @@ const Header = async ({ isAdminPage = false }) => {
                   <span className="hidden md:inline">Saved Cars</span>
                 </Button>
               </Link>
-
               {isAdmin ? (
                 <Link href="/admin">
                   <Button variant="outline">
