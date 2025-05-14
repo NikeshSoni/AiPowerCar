@@ -3,13 +3,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import React from 'react'
+import React, { useState } from 'react'
 
 const CarsList = () => {
 
+    const [search, setSearch] = useState("")
+
     const router = useRouter();
 
-    const handleSearchSubmit = () => {}
+    const handleSearchSubmit = (e) => {
+
+        e.preventDefault()
+
+        // API Calling 
+
+     }
 
     return (
         <div className='space-y-4'>
@@ -24,7 +32,13 @@ const CarsList = () => {
                 <form className='flex w-full sm:w-auto' onSubmit={handleSearchSubmit}>
                     <div className='relative flex-1'>
                         <Search className='absolute left-2.5 top-2.5 h-4 w-4 text-gray-500' />
-                        <Input className="pl-9 w-full sm:w-60" />
+                        <Input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 w-full sm:w-60" 
+                            type="search"
+                            placeholder="Search Cars..." />
+
                     </div>
                 </form>
             </div>
