@@ -1,4 +1,8 @@
+import { createClient } from "@/lib/supabase";
+import { auth } from "@clerk/nextjs/server";
+import { parseError } from "@clerk/shared/dist/error";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { cookies } from "next/headers";
 
 
 async function fileToBase(file) {
@@ -61,7 +65,111 @@ export async function processCarImageWithAI(file) {
         const result = await model.generateContent([imagePart, prompt]);
 
         const response = await result.response;
-        const text = response.text()
+        const text = response.text();
+        const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
 
-    } catch (error) { }
+        try {
+            const carDetails = JSON.parse(cleanedText)
+
+            const requiredFields = [
+                "make",
+                "model",
+                "year",
+                "color",
+                "price",
+                "mileage",
+                "bodyType",
+                "fuelType",
+                "transmission",
+                "description",
+                "confidence",
+            ];
+
+            const missingFields = requiredFields.filter(
+                (fiels) = !(fiels in carDetails)
+            )
+
+            if (missingFields.length > 0) {
+                throw new Error(
+                    `AI responce missing required fields: ${missingFields.join(", ")}`
+                )
+            }
+
+            return {
+                success: true,
+                data: carDetails
+            }
+        } catch (error) {
+            console.log("Failed to parse AI responce:", parseError);
+            return {
+                success: false,
+                data: "Failed to parse AI responce"
+            }
+        }
+
+    } catch (error) {
+        throw new Error("Gemini API Error:" + error.message)
+    }
+}
+
+
+export async function addcar({ carData, images }) {
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const user = await db.user.findUnique(({
+            where: { clerkUserId: userId },
+
+        }))
+
+        if (!user) throw new Error("User Not Found");
+
+        const carId = uuidv4();
+        const folderPath = `cars/${carId}`;
+
+        const cookieStore = await cookies()
+        const supabase = createClient(cookieStore);
+
+        const imageUrls = [];
+
+        for (let i = 0; i < images.length; i++) {
+
+            const base64Data = images[i];
+            //  Skip if image data is not valid 
+
+            if (!base64Data || !base64Data.startWith("data:image/")) {
+                console.warn("Skipping invalid image data");
+                continue;
+            }
+
+            const base64 = base64Data.split(", ")[1];
+            const imageBuffer = Buffer.from(base64, "base64")
+
+            // determine file extention from the data url 
+            const mimeMatch = base64Data.match(/data:image\/([a-zA-Z0-9]+);/);
+            const fileExtension = mimeMatch ? mimeMatch[1] : "jpeg";
+
+            // create file name 
+
+            const fileName = `image-${Date.now()}-${i}.${fileExtension}`
+            const filePath = `${folderPath}/${fileName}`;
+
+            const { data, error } = await supabase.storage.from("car-images").upload(filePath, imageBuffer, {
+                contentType: `images/${fileExtension}`,
+            })
+
+            if (error) {
+                console.error("Error uploading image:", error);
+                throw new Error(`Failed to upload image: ${error.message}`)
+            }
+
+            const publickUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/
+                                 public/car-images/${filePath}`;
+            imageUrls.push(publickUrl)
+        }
+
+    } catch (error) {
+
+    }
 }
