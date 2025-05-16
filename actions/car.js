@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase";
 import { auth } from "@clerk/nextjs/server";
 import { parseError } from "@clerk/shared/dist/error";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
 
@@ -167,9 +168,39 @@ export async function addcar({ carData, images }) {
             const publickUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/
                                  public/car-images/${filePath}`;
             imageUrls.push(publickUrl)
+
+
+            if (imageUrls.length === 0) {
+                throw new Error("No valid images were uploaded");
+            }
         }
 
-    } catch (error) {
+        const car = await db.car.create({
+            data: {
+                id: carId,
+                make: carData.make,
+                model: carData.model,
+                year: carData.year,
+                price: carData.price,
+                mileage: carData.mileage,
+                color: carData.color,
+                fuelType: carData.fuelType,
+                transmission: carData.transmission,
+                bodyType: carData.bodyType,
+                seats: carData.seats,
+                description: carData.description,
+                status: carData.status,
+                featured: carData.featured,
+                images: imageUrls, // Store the array of image URLs
+            },
+        });
 
+        revalidatePath('/admin/cars')
+
+        return {
+            success: true
+        }
+    } catch (error) {
+        throw new Error("Error adding car:" + error.message)
     }
 }
