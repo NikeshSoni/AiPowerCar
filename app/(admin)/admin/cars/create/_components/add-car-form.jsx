@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,9 +18,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
-import { Upload, X } from 'lucide-react';
+import { Loader2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { addcar } from '@/actions/car';
+import useFetch from '@/hooks/use-fetch';
 
 
 const fuelTypes = ["Petrol", "Diesel", "Electric", "Hybrid", "Plug-in Hybrid"];
@@ -86,12 +88,36 @@ const AddcarForm = () => {
     }
   })
 
+  const { data: addCarresult, loading: addCarLoading, fn: addCarFn } = useFetch(addcar)
+
+  useEffect(() => {
+    if (addCarresult?.success) {
+      toast.success("car added successfully")
+      Router.push("/admin/cars")
+    }
+  }, [addCarresult])
+
   const onSubmit = async (data) => {
 
     if (uploadedImages.length === 0) {
       setImageError("Pleace upload at latest one image")
       return;
     }
+
+    const carData = {
+      ...data,
+      year: parseInt(data.year),
+      price: parseInt(data.price),
+      mileage: parseInt(data.mileage),
+      seats: data.seats ? parseInt(data.seats) : null,
+    }
+
+    await addCarFn({
+      carData,
+      images: uploadedImages,
+    })
+
+    console.log(data, uploadedImages, "uploadedImages");
   };
 
 
@@ -416,6 +442,21 @@ const AddcarForm = () => {
                     </div>
                   )}
 
+
+                  <Button
+                    type="submit"
+                    className="w-full mt-2.5 md:w-auto bg-gray-600"
+                    disable={addCarLoading}
+                  >
+                    {addCarLoading ? (
+                      <>
+                        <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                        Adding car...
+                      </>
+                    ) : (
+                      "Add car"
+                    )}
+                  </Button>
 
                 </div>
               </form>

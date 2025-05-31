@@ -1,16 +1,17 @@
+'use server';
 import { createClient } from "@/lib/supabase";
 import { auth } from "@clerk/nextjs/server";
-import { parseError } from "@clerk/shared/dist/error";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-
+import { v4 as uuidv4 } from "uuid"
+import { db } from "@/lib/db";
 
 async function fileToBase(file) {
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    return buffer.toString("base64");
-}
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        return buffer.toString("base64");
+    } 
 
 export async function processCarImageWithAI(file) {
     try {
@@ -101,7 +102,8 @@ export async function processCarImageWithAI(file) {
                 data: carDetails
             }
         } catch (error) {
-            console.log("Failed to parse AI responce:", parseError);
+
+            console.log("Failed to parse AI responce:");
             return {
                 success: false,
                 data: "Failed to parse AI responce"
@@ -109,6 +111,7 @@ export async function processCarImageWithAI(file) {
         }
 
     } catch (error) {
+        console.log("hsjjhsd",error);
         throw new Error("Gemini API Error:" + error.message)
     }
 }
@@ -121,7 +124,6 @@ export async function addcar({ carData, images }) {
 
         const user = await db.user.findUnique(({
             where: { clerkUserId: userId },
-
         }))
 
         if (!user) throw new Error("User Not Found");
@@ -139,12 +141,12 @@ export async function addcar({ carData, images }) {
             const base64Data = images[i];
             //  Skip if image data is not valid 
 
-            if (!base64Data || !base64Data.startWith("data:image/")) {
+            if (!base64Data || !base64Data.startsWith("data:image/")) {
                 console.warn("Skipping invalid image data");
                 continue;
             }
 
-            const base64 = base64Data.split(", ")[1];
+            const base64 = base64Data.split(",")[1];
             const imageBuffer = Buffer.from(base64, "base64")
 
             // determine file extention from the data url 
@@ -185,7 +187,7 @@ export async function addcar({ carData, images }) {
                 mileage: carData.mileage,
                 color: carData.color,
                 fuelType: carData.fuelType,
-                transmission: carData.transmission,
+                transmission: carData.transmission || "Unknown",
                 bodyType: carData.bodyType,
                 seats: carData.seats,
                 description: carData.description,
