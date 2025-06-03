@@ -163,20 +163,17 @@ const AddcarForm = () => {
       // Update form with AI result
 
       const carDetails = processImageResult.data;
-
-
-      console.log(carDetails, "carDetails");
-
+      console.log("Car Details:", carDetails);
 
       setValue("make", carDetails.make);
       setValue("model", carDetails.model);
       setValue("year", carDetails.year.toString());
       setValue("color", carDetails.color);
-      setValue("bodyType", carDetails.bodyType);
+      setValue("bodyType", carDetails.bodyType?.toUpperCase() || "");
       setValue("fuelType", carDetails.fuelType);
-      setValue("price", carDetails.price);
-      setValue("mileage", carDetails.mileage);
-      setValue("transmission", carDetails.transmission);
+      setValue("price", carDetails.price?.toString() || "");
+      setValue("mileage", carDetails.mileage?.toString() || "");
+      setValue("transmissions", carDetails.transmission);
       setValue("description", carDetails.description);
 
       const reader = new FileReader();
