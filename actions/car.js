@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { v4 as uuidv4 } from "uuid"
 import { db } from "@/lib/db";
+import { serializedCarsData } from "@/lib/helper";
 
 async function fileToBase(file) {
     const bytes = await file.arrayBuffer();
@@ -73,7 +74,7 @@ export async function processCarImageWithAI(file) {
             const result = await model.generateContent([imagePart, prompt]);
             const response = await result.response;
             const text = response.text();
-            
+
             // Clean the response text
             const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
             console.log("Raw AI Response:", cleanedText);
@@ -111,6 +112,8 @@ export async function processCarImageWithAI(file) {
                 carDetails.mileage = parseInt(carDetails.mileage);
                 carDetails.confidence = parseFloat(carDetails.confidence);
 
+                console.log(carDetails, "carDetailscarDetailscarDetails");
+
                 return {
                     success: true,
                     data: carDetails
@@ -126,18 +129,18 @@ export async function processCarImageWithAI(file) {
 
         } catch (error) {
             console.error(`Attempt ${attempt} failed:`, error);
-            
+
             // Check if it's a rate limit error
             if (error.message.includes('429') || error.message.includes('RATE_LIMIT_EXCEEDED')) {
                 if (attempt < maxRetries) {
                     // Calculate exponential backoff delay
                     const delay = baseDelay * Math.pow(2, attempt - 1);
-                    console.log(`Rate limit exceeded. Retrying in ${delay/1000} seconds...`);
+                    console.log(`Rate limit exceeded. Retrying in ${delay / 1000} seconds...`);
                     await sleep(delay);
                     continue;
                 }
             }
-            
+
             // If we've exhausted all retries or it's not a rate limit error
             if (attempt === maxRetries) {
                 throw new Error("Gemini API Error: " + error.message);
@@ -145,119 +148,6 @@ export async function processCarImageWithAI(file) {
         }
     }
 }
-
-
-// export async function processCarImageWithAI(file) {
-//     try {
-//         // Check if API key is available
-//         if (!process.env.GEMINI_API_KEY) {
-//             throw new Error("Gemini API key is not configured");
-//         }
-
-//         // Initialize Gemini API
-//         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-//         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-//         // Convert image file to base64
-//         const base64Image = await fileToBase(file);
-
-//         // Create image part for the model
-//         const imagePart = {
-//             inlineData: {
-//                 data: base64Image,
-//                 mimeType: file.type,
-//             },
-//         };
-
-//         // Define the prompt for car detail extraction
-//         const prompt = `
-//         Analyze this car image and extract the following information:
-//         1. Make (manufacturer)
-//         2. Model
-//         3. Year (approximately)
-//         4. Color
-//         5. Body type (SUV, Sedan, Hatchback, etc.)
-//         6. Mileage
-//         7. Fuel type (your best guess)
-//         8. Transmission type (your best guess)
-//         9. Price (your best guess)
-//         9. Short Description as to be added to a car listing
-
-//         Format your response as a clean JSON object with these fields:
-//         {
-//           "make": "",
-//           "model": "",
-//           "year": 0000,
-//           "color": "",
-//           "price": "",
-//           "mileage": "",
-//           "bodyType": "",
-//           "fuelType": "",
-//           "transmission": "",
-//           "description": "",
-//           "confidence": 0.0
-//         }
-
-//         For confidence, provide a value between 0 and 1 representing how confident you are in your overall identification.
-//         Only respond with the JSON object, nothing else.
-//       `;
-
-//         // Get response from Gemini
-//         const result = await model.generateContent([imagePart, prompt]);
-//         const response = await result.response;
-//         const text = response.text();
-//         const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
-
-//         // Parse the JSON response
-//         try {
-//             const carDetails = JSON.parse(cleanedText);
-
-//             // Validate the response format
-//             const requiredFields = [
-//                 "make",
-//                 "model",
-//                 "year",
-//                 "color",
-//                 "bodyType",
-//                 "price",
-//                 "mileage",
-//                 "fuelType",
-//                 "transmission",
-//                 "description",
-//                 "confidence",
-//             ];
-
-//             const missingFields = requiredFields.filter(
-//                 (field) => !(field in carDetails)
-//             );
-
-//             if (missingFields.length > 0) {
-//                 throw new Error(
-//                     `AI response missing required fields: ${missingFields.join(", ")}`
-//                 );
-//             }
-
-//             // Return success response with data
-//             return {
-//                 success: true,
-//                 data: carDetails,
-//             };
-//         } catch (parseError) {
-//             console.error("Failed to parse AI response:", parseError);
-//             console.log("Raw response:", text);
-//             return {
-//                 success: false,
-//                 error: "Failed to parse AI response",
-//             };
-//         }
-//     } catch (error) {
-//         console.error();
-//         throw new Error("Gemini API error:" + error.message);
-//     }
-// }
-
-
-
 
 export async function addcar({ carData, images }) {
     try {
@@ -346,5 +236,148 @@ export async function addcar({ carData, images }) {
         }
     } catch (error) {
         throw new Error("Error adding car:" + error.message)
+    }
+}
+
+export async function getCars(search = "") {
+
+    try {
+
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const user = await db.user.findUnique(({
+            where: { clerkUserId: userId },
+        }))
+
+        if (!user) throw new Error("User Not Found");
+
+        let where = {}
+
+        if (search) {
+            where.OR = [
+                { make: { contains: search, mode: "insensitive" } },
+                { model: { contains: search, mode: "insensitive" } },
+                { color: { contains: search, mode: "insensitive" } },
+            ]
+        }
+
+
+        const cars = await db.car.findMany({
+            where,
+            orderBy: { createdAt: "desc" }
+        })
+
+        console.log(cars, "cars data ");
+
+        const serializedCars = cars.map(serializedCarsData)
+
+        console.log(serializedCars, "serializedCars");
+
+
+        return {
+            success: true,
+            data: serializedCars,
+        }
+
+
+    } catch (error) {
+
+        console.log("facing the error when i get a car data", error);
+
+        return {
+            success: false,
+            error: error.message,
+        }
+    }
+
+}
+
+export async function deleteCar(id) {
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const user = await db.user.findUnique(({
+            where: { clerkUserId: userId },
+        }))
+
+        if (!user) throw new Error("User Not Found");
+
+        const car = await db.car.findUnique({
+            where: { id },
+            select: { images: true }
+        })
+
+        if (!car) {
+            return {
+                success: false,
+                error: "Car not found",
+            }
+        }
+
+        await db.car.delete({
+            where: { id },
+        })
+
+
+        try {
+
+            const cookieStore = await cookies()
+            const supabase = createClient(cookieStore);
+
+            const filepaths = car.images.map((imageUrl) => {
+                const url = new URL(imageUrl);
+                const pathMatch = url.pathname.match(/\/car-images\/(.*)/);
+
+                // if it is not match the path like "car-images" then its return null that condition apply in the below 
+                return pathMatch ? pathMatch[1] : null;
+            }).filter(Boolean)
+
+
+            if (filepaths.length > 0) {
+                const { error } = await supabase.storage.from("car-images").remove(filepaths)
+
+                if (error) {
+                    console.log("error deleting image", error);
+                }
+            }
+
+        } catch (storegeError) {
+            console.log("Error store the oprations", storegeError);
+        }
+
+        revalidatePath("/admin/cars")
+        return {
+            success: true,
+        }
+    } catch (error) {
+
+        console.log("facing error", error);
+
+        return {
+            success: false,
+            error: error.message
+        }
+
+    }
+}
+
+
+export async function updateCarStatus(id, { status, featured }) {
+
+    try {
+        const { userId } = await auth();
+        if (!userId) throw new Error("Unauthorized");
+
+        const user = await db.user.findUnique(({
+            where: { clerkUserId: userId },
+        }))
+
+        if (!user) throw new Error("User Not Found");
+
+        const updateData = {}
+    } catch (error) {
+
     }
 }

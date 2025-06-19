@@ -74,6 +74,28 @@ const AddcarForm = () => {
 
   // const onAiDrop = () => {}
 
+  // Add price parsing function
+  const parsePrice = (priceStr) => {
+    if (!priceStr) return "";
+    
+    try {
+      // Remove currency symbols and commas
+      const cleanPrice = priceStr.replace(/[$,]/g, '');
+      
+      // If it's a range, take the lower value
+      if (cleanPrice.includes('-')) {
+        const [lowerPrice] = cleanPrice.split('-').map(p => p.trim());
+        // Convert to number and back to string to ensure it's a valid number
+        return Number(lowerPrice).toString();
+      }
+      
+      // If it's a single price, convert to number and back to string
+      return Number(cleanPrice).toString();
+    } catch (error) {
+      console.error("Error parsing price:", error);
+      return "";
+    }
+  };
 
   const onAiDrop = (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -160,8 +182,6 @@ const AddcarForm = () => {
 
   useEffect(() => {
     if (processImageResult?.success) {
-      // Update form with AI result
-
       const carDetails = processImageResult.data;
       console.log("Car Details:", carDetails);
 
@@ -171,7 +191,9 @@ const AddcarForm = () => {
       setValue("color", carDetails.color);
       setValue("bodyType", carDetails.bodyType?.toUpperCase() || "");
       setValue("fuelType", carDetails.fuelType);
-      setValue("price", carDetails.price?.toString() || "");
+      const parsedPrice = parsePrice(carDetails.price);
+      console.log("Parsed Price:", parsedPrice); // Debug log
+      setValue("price", parsedPrice);
       setValue("mileage", carDetails.mileage?.toString() || "");
       setValue("transmissions", carDetails.transmission);
       setValue("description", carDetails.description);
