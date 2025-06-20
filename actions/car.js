@@ -377,7 +377,34 @@ export async function updateCarStatus(id, { status, featured }) {
         if (!user) throw new Error("User Not Found");
 
         const updateData = {}
-    } catch (error) {
 
+        if (status !== undefined) {
+            updateData.status = status;
+        }
+
+        if (featured !== undefined) {
+            updateData.featured = featured;
+        }
+
+        // Update the car 
+
+        await db.car.update({
+            where: { id },
+            data: updateData
+        })
+
+        revalidatePath("/admin/cars")
+
+        return {
+            success: true
+        }
+
+    } catch (error) {
+        console.log("facing error", error);
+
+        return {
+            success: false,
+            error: error.message
+        }
     }
 }

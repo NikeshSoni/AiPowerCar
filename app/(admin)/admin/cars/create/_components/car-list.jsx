@@ -1,11 +1,21 @@
 "use client"
+import { getCars } from '@/actions/car'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import useFetch from '@/hooks/use-fetch'
 import { Plus, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
 
 const CarsList = () => {
+
+
+    const {
+        loading: loadingCars,
+        fn: fetchcars,
+        data: carsData,
+        error: carsError
+    } = useFetch(getCars)
 
     const [search, setSearch] = useState("")
 
@@ -17,7 +27,7 @@ const CarsList = () => {
 
         // API Calling 
 
-     }
+    }
 
     return (
         <div className='space-y-4'>
@@ -35,7 +45,7 @@ const CarsList = () => {
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 w-full sm:w-60" 
+                            className="pl-9 w-full sm:w-60"
                             type="search"
                             placeholder="Search Cars..." />
 
