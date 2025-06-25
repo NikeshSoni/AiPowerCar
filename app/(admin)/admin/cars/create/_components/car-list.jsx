@@ -1,25 +1,53 @@
 "use client"
-import { getCars } from '@/actions/car'
+import { deleteCar, getCars, updateCarStatus } from '@/actions/car'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import useFetch from '@/hooks/use-fetch'
 import { Plus, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react';
+import {
+    Card,
+    CardAction,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+  } from "@/components/ui/card"
 
 const CarsList = () => {
 
+    const [search, setSearch] = useState("")
+
+    const router = useRouter();
 
     const {
         loading: loadingCars,
         fn: fetchcars,
         data: carsData,
         error: carsError
-    } = useFetch(getCars)
+    } = useFetch(getCars);
 
-    const [search, setSearch] = useState("")
+    useEffect(() => {
+        fetchcars(search)
+    }, [search])
 
-    const router = useRouter();
+
+    const {
+        loading: deleteCars,
+        fn: deleteCarfn,
+        data: deleteResult,
+        error: deleteError
+    } = useFetch(deleteCar);
+
+    const {
+        loading: updateingCar,
+        fn: updateCarStatusFn,
+        data: updateResult,
+        error: updateError
+    } = useFetch(updateCarStatus);
+
+
 
     const handleSearchSubmit = (e) => {
 
@@ -38,7 +66,6 @@ const CarsList = () => {
                     <Plus className='h-4 w-4' /> Add car
                 </Button>
 
-
                 <form className='flex w-full sm:w-auto' onSubmit={handleSearchSubmit}>
                     <div className='relative flex-1'>
                         <Search className='absolute left-2.5 top-2.5 h-4 w-4 text-gray-500' />
@@ -48,12 +75,18 @@ const CarsList = () => {
                             className="pl-9 w-full sm:w-60"
                             type="search"
                             placeholder="Search Cars..." />
-
                     </div>
                 </form>
             </div>
 
             {/* Cars Table   */}
+
+
+            <Card> 
+                <CardContent className="p-0">
+                    <p>Card Content</p>
+                </CardContent>
+            </Card>
         </div>
     )
 }
